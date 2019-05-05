@@ -23,7 +23,6 @@ BOOST_GEOMETRY_REGISTER_C_ARRAY_CS(cs::cartesian)
 
 typedef boost::geometry::model::polygon<boost::geometry::model::d2::point_xy<double> > Polygon;
 
-
 using namespace std;
 
 /*=======================================================================
@@ -51,7 +50,8 @@ const int NUM_CLASS = 3;
 // parameters varying per class
 vector<string> CLASS_NAMES;
 // the minimum overlap required for 2D evaluation on the image/ground plane and 3D evaluation
-// const double MIN_OVERLAP[3][3] = {{0.7, 0.5, 0.5}, {0.5, 0.25, 0.25}, {0.5, 0.25, 0.25}};
+//const double MIN_OVERLAP[3][3] = {{0.7, 0.5, 0.5}, {0.25, 0.25, 0.25}, {0.25, 0.25, 0.25}};
+//const double MIN_OVERLAP[3][3] = {{0.7, 0.5, 0.5}, {0.5, 0.25, 0.25}, {0.5, 0.25, 0.25}};
 const double MIN_OVERLAP[3][3] = {{0.7, 0.5, 0.5}, {0.7, 0.5, 0.5}, {0.7, 0.5, 0.5}};
 
 // no. of recall steps that should be evaluated (discretized)
@@ -653,7 +653,6 @@ bool eval_class (FILE *fp_det, FILE *fp_ori, CLASSES current_class,
     for(int32_t j=0; j<pr_tmp.v.size(); j++)
       v.push_back(pr_tmp.v[j]);
   }
-
   // get scores that must be evaluated for recall discretization
   thresholds = getThresholds(v, n_gt);
 
@@ -661,7 +660,6 @@ bool eval_class (FILE *fp_det, FILE *fp_ori, CLASSES current_class,
   vector<tPrData> pr;
   pr.assign(thresholds.size(),tPrData());
   for (int32_t i=0; i<groundtruth.size(); i++){
-
     // for all scores/recall thresholds do:
     for(int32_t t=0; t<thresholds.size(); t++){
       tPrData tmp = tPrData();
@@ -704,13 +702,13 @@ bool eval_class (FILE *fp_det, FILE *fp_ori, CLASSES current_class,
     return true;
 }
 
-void saveAndPlotPlots(string dir_name,string file_name,string obj_type,vector<double> vals[],bool is_aos){
+void saveAndPlotPlots(string dir_name,string file_name,string obj_type,vector<double> vals[],bool is_aos, string result_fp){
 
   char command[1024];
-
   // save plot data to file
   FILE *fp = fopen((dir_name + "/" + file_name + ".txt").c_str(),"w");
-  printf("save %s\n", (dir_name + "/" + file_name + ".txt").c_str());
+  FILE *result_fp_handle = fopen((result_fp).c_str(),"a");
+
   for (int32_t i=0; i<(int)N_SAMPLE_PTS; i++)
     fprintf(fp,"%f %f %f %f\n",(double)i/(N_SAMPLE_PTS-1.0),vals[0][i],vals[1][i],vals[2][i]);
   fclose(fp);
@@ -720,6 +718,8 @@ void saveAndPlotPlots(string dir_name,string file_name,string obj_type,vector<do
       for (int i = 0; i < vals[v].size(); i = i + 4)
           sum[v] += vals[v][i];
   printf("%s AP: %f %f %f\n", file_name.c_str(), sum[0] / 11 * 100, sum[1] / 11 * 100, sum[2] / 11 * 100);
+  fprintf(result_fp_handle,"%s AP: %f %f %f\n", file_name.c_str(), sum[0] / 11 * 100, sum[1] / 11 * 100, sum[2] / 11 * 100);
+  fclose(result_fp_handle);
 
 
   // create png + eps
@@ -791,7 +791,7 @@ vector<int32_t> getEvalIndices(const string& result_dir) {
     return indices;
 }
 
-bool eval(string gt_dir, string result_dir, Mail* mail){
+bool eval(string gt_dir, string result_dir, Mail* mail, string result_fp){
 
   // set some global parameters
   initGlobals();
@@ -849,6 +849,7 @@ bool eval(string gt_dir, string result_dir, Mail* mail){
   // holds pointers for result files
   FILE *fp_det=0, *fp_ori=0;
 
+  printf("\n================= 2D =================\n");
   // eval image 2D bounding boxes
   for (int c = 0; c < NUM_CLASS; c++) {
     CLASSES cls = (CLASSES)c;
@@ -864,23 +865,25 @@ bool eval(string gt_dir, string result_dir, Mail* mail){
         return false;
       }
       fclose(fp_det);
-      saveAndPlotPlots(plot_dir, CLASS_NAMES[c] + "_detection", CLASS_NAMES[c], precision, 0);
+      saveAndPlotPlots(plot_dir, CLASS_NAMES[c] + "_detection", CLASS_NAMES[c], precision, 0, result_fp);
       if(compute_aos){
-        saveAndPlotPlots(plot_dir, CLASS_NAMES[c] + "_orientation", CLASS_NAMES[c], aos, 1);
+        saveAndPlotPlots(plot_dir, CLASS_NAMES[c] + "_orientation", CLASS_NAMES[c], aos, 1, result_fp);
         fclose(fp_ori);
       }
     }
   }
-
+//   printf("Finished 2D bounding box eval.\n");
   // don't evaluate AOS for birdview boxes and 3D boxes
   compute_aos = false;
 
+  printf("\n================= BV =================\n");
   // eval bird's eye view bounding boxes
   for (int c = 0; c < NUM_CLASS; c++) {
     CLASSES cls = (CLASSES)c;
     if (eval_ground[c]) {
       fp_det = fopen((result_dir + "/stats_" + CLASS_NAMES[c] + "_detection_ground.txt").c_str(), "w");
       vector<double> precision[3], aos[3];
+//       printf("Going to eval ground for class: %s\n", CLASS_NAMES[c].c_str());  # lhy
       if(   !eval_class(fp_det, fp_ori, cls, groundtruth, detections, compute_aos, groundBoxOverlap, precision[0], aos[0], EASY, GROUND)
          || !eval_class(fp_det, fp_ori, cls, groundtruth, detections, compute_aos, groundBoxOverlap, precision[1], aos[1], MODERATE, GROUND)
          || !eval_class(fp_det, fp_ori, cls, groundtruth, detections, compute_aos, groundBoxOverlap, precision[2], aos[2], HARD, GROUND)) {
@@ -888,16 +891,19 @@ bool eval(string gt_dir, string result_dir, Mail* mail){
         return false;
       }
       fclose(fp_det);
-      saveAndPlotPlots(plot_dir, CLASS_NAMES[c] + "_detection_ground", CLASS_NAMES[c], precision, 0);
+      saveAndPlotPlots(plot_dir, CLASS_NAMES[c] + "_detection_ground", CLASS_NAMES[c], precision, 0, result_fp);
     }
   }
+//   printf("Finished Birdeye eval.\n");
 
+  printf("\n================= 3D =================\n");
   // eval 3D bounding boxes
   for (int c = 0; c < NUM_CLASS; c++) {
     CLASSES cls = (CLASSES)c;
     if (eval_3d[c]) {
       fp_det = fopen((result_dir + "/stats_" + CLASS_NAMES[c] + "_detection_3d.txt").c_str(), "w");
       vector<double> precision[3], aos[3];
+//       printf("\nGoing to eval 3D box for class: %s\n", CLASS_NAMES[c].c_str());
       if(   !eval_class(fp_det, fp_ori, cls, groundtruth, detections, compute_aos, box3DOverlap, precision[0], aos[0], EASY, BOX3D)
          || !eval_class(fp_det, fp_ori, cls, groundtruth, detections, compute_aos, box3DOverlap, precision[1], aos[1], MODERATE, BOX3D)
          || !eval_class(fp_det, fp_ori, cls, groundtruth, detections, compute_aos, box3DOverlap, precision[2], aos[2], HARD, BOX3D)) {
@@ -905,9 +911,10 @@ bool eval(string gt_dir, string result_dir, Mail* mail){
         return false;
       }
       fclose(fp_det);
-      saveAndPlotPlots(plot_dir, CLASS_NAMES[c] + "_detection_3d", CLASS_NAMES[c], precision, 0);
+      saveAndPlotPlots(plot_dir, CLASS_NAMES[c] + "_detection_3d", CLASS_NAMES[c], precision, 0, result_fp);
     }
   }
+//   printf("Finished 3D bounding box eval.\n");
 
   // success
   return true;
@@ -924,15 +931,16 @@ int32_t main (int32_t argc,char *argv[]) {
   // read arguments
   string gt_dir = argv[1];
   string result_dir = argv[2];
+  string result_fp = result_dir + "/all_results.txt";
 
   // init notification mail
   Mail *mail;
   mail = new Mail();
-  mail->msg("Thank you for participating in our evaluation!");
+//   mail->msg("Thank you for participating in our evaluation!");
 
   // run evaluation
-  if (eval(gt_dir, result_dir, mail)) {
-    mail->msg("Your evaluation results are available at:");
+  if (eval(gt_dir, result_dir, mail, result_fp)) {
+//     mail->msg("Your evaluation results are available at:");
     mail->msg(result_dir.c_str());
   } else {
     system(("rm -r " + result_dir + "/plot").c_str());
@@ -944,5 +952,3 @@ int32_t main (int32_t argc,char *argv[]) {
 
   return 0;
 }
-
-
