@@ -20,3 +20,10 @@ Note that you don't have to detect over all KITTI training data. The evaluator o
 
 - June, 2017:
   * Fixed the bug of detection box filtering based on min height according to KITTI's note on 25.04.2017.
+  
+  
+### lhy improvement
+
+- May, 2019:
+  * make the output result more readable and concise
+  * the output result will be recorded in "all_result.txt" as well
