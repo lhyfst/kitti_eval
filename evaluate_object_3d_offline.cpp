@@ -804,7 +804,7 @@ bool eval(string gt_dir, string result_dir, Mail* mail, string result_fp){
   // create output directories
   system(("mkdir " + plot_dir).c_str());
 
-  // hold detections and ground truth in memory
+  // hold detections and ground truth in memory; all groundtruth and all detections
   vector< vector<tGroundtruth> > groundtruth;
   vector< vector<tDetection> >   detections;
 
@@ -826,12 +826,12 @@ bool eval(string gt_dir, string result_dir, Mail* mail, string result_fp){
     char file_name[256];
     sprintf(file_name,"%06d.txt",indices.at(i));
 
-    // read ground truth and result poses
+    // read ground truth and result poses; single file groundtruth and detection
     bool gt_success,det_success;
     vector<tGroundtruth> gt   = loadGroundtruth(gt_dir + "/" + file_name,gt_success);
     vector<tDetection>   det  = loadDetections(result_dir + "/data/" + file_name,
             compute_aos, eval_image, eval_ground, eval_3d, det_success);
-    groundtruth.push_back(gt);
+    groundtruth.push_back(gt);  // append to all ground truth
     detections.push_back(det);
 
     // check for errors
