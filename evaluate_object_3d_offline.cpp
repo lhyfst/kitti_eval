@@ -464,7 +464,7 @@ tPrData computeStatistics(CLASSES current_class, const vector<tGroundtruth> &gt,
   const double NO_DETECTION = -10000000;
   vector<double> delta;            // holds angular difference for TPs (needed for AOS evaluation)
   vector<bool> assigned_detection; // holds wether a detection was assigned to a valid or ignored ground truth
-  assigned_detection.assign(det.size(), false);
+  assigned_detection.assign(det.size(), false);  // indicate if the detection has been assigned
   vector<bool> ignored_threshold;
   ignored_threshold.assign(det.size(), false); // holds detections with a threshold lower than thresh if FP are computed
 
@@ -493,7 +493,7 @@ tPrData computeStatistics(CLASSES current_class, const vector<tGroundtruth> &gt,
     for(int32_t j=0; j<det.size(); j++){
 
       // detections not of the current class, already assigned or with a low threshold are ignored
-      if(ignored_det[j]==-1)
+      if(ignored_det[j]==-1) 
         continue;
       if(assigned_detection[j])
         continue;
