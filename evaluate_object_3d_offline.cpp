@@ -714,6 +714,7 @@ void saveAndPlotPlots(string dir_name,string file_name,string obj_type,vector<do
   fclose(fp);
 
   float sum[3] = {0, 0, 0};
+  // vals[v].size() = 41 and pick one from 4, so there are 11 nums, so should sum[.]/11
   for (int v = 0; v < 3; ++v)
       for (int i = 0; i < vals[v].size(); i = i + 4)
           sum[v] += vals[v][i];
